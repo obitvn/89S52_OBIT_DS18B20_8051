@@ -1,0 +1,201 @@
+C51 COMPILER V9.59.0.0   CODE_DS18B20                                                      11/02/2018 15:16:09 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE CODE_DS18B20
+OBJECT MODULE PLACED IN code_ds18b20.OBJ
+COMPILER INVOKED BY: F:\Cai phan mem\Keil C 8051\C51\BIN\C51.EXE code_ds18b20.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXT
+                    -END TABS(2)
+
+line level    source
+
+   1          #include <REGX52.H>
+   2          
+   3          
+   4          #define FREQ_OSC 12000000
+   5          //Khai bao chan giao tiep LCD16x2 4bit
+   6          sbit LCD_RS  = P1^6;
+   7          sbit LCD_RW  = P1^5;
+   8          sbit LCD_EN  = P1^4;
+   9          sbit LCD_D4  = P1^3;
+  10          sbit LCD_D5  = P1^2;
+  11          sbit LCD_D6  = P1^1;
+  12          sbit LCD_D7  = P1^0;
+  13          //Khai bao chan giao tiep DS18B20
+  14          sbit DQ   = P2^4;
+  15          unsigned char temp; //Bien luu gia tri nhiet do
+  16          /*****************Ham delay*********************/
+  17           void delay_us(unsigned int t){
+  18   1              unsigned int i;
+  19   1              for(i=0;i<t;i++);
+  20   1      }
+  21          void delay_ms(unsigned int t){
+  22   1              unsigned int i,j;
+  23   1              for(i=0;i<t;i++)
+  24   1              for(j=0;j<125;j++);
+  25   1      }
+  26          /****************Ctr giao tiep IC DS18B20***************************/
+  27          void delay_18B20(unsigned int ti){
+  28   1          while(ti--);
+  29   1      }
+  30          void Init_18B20(void){
+  31   1          DQ = 1;   
+  32   1          delay_18B20(8);
+  33   1          DQ = 0;   
+  34   1          delay_18B20(65);
+  35   1          DQ = 1;   
+  36   1          delay_18B20(20);    
+  37   1      }
+  38          unsigned char ReadOneChar(void){
+  39   1          unsigned char i=0;
+  40   1          unsigned char dat = 0;
+  41   1          for (i=8;i>0;i--){
+  42   2                DQ = 0;
+  43   2                dat>>=1;
+  44   2                DQ = 1;
+  45   2                if(DQ)
+  46   2                dat |= 0x80;
+  47   2                delay_18B20(4);
+  48   2          }
+  49   1          return(dat);
+  50   1      }
+  51          void WriteOneChar(unsigned char dat){
+  52   1          unsigned char i=0;
+  53   1          for (i=8; i>0; i--){
+  54   2              DQ = 0;
+C51 COMPILER V9.59.0.0   CODE_DS18B20                                                      11/02/2018 15:16:09 PAGE 2   
+
+  55   2              DQ = dat&0x01;
+  56   2              delay_18B20(5);
+  57   2              DQ = 1;
+  58   2              dat>>=1;
+  59   2          }
+  60   1      }
+  61          void ReadTemperature(void){ 
+  62   1          unsigned char a=0;
+  63   1          unsigned char b=0;
+  64   1        //EA=0;//Cam ngat tranh viec anh huong qua trinh doc nhiet do
+  65   1          Init_18B20();
+  66   1          WriteOneChar(0xCC);        // Bo qua ROM
+  67   1          WriteOneChar(0x44);
+  68   1          delay_18B20(10); 
+  69   1          Init_18B20();
+  70   1          WriteOneChar(0xCC);
+  71   1          WriteOneChar(0xBE);    //Doc nhiet do
+  72   1          delay_18B20(10);
+  73   1          a=ReadOneChar();        //Read temp low value
+  74   1          b=ReadOneChar();          //Read temp high value
+  75   1          temp=((b*256+a)>>4);    //gia tri nhiet do luu vao bien temp
+  76   1        //EA=1; //Doc xong thi cho phep ngat
+  77   1      }//End code DS18B20
+  78          /**************Ctr giao tiep LCD 16x2 4bit**********************/
+  79          void LCD_Enable(void){
+  80   1              LCD_EN =1;
+  81   1              delay_us(3);
+  82   1              LCD_EN=0;
+  83   1              delay_us(50); 
+  84   1      }
+  85          //Ham Gui 4 Bit Du Lieu Ra LCD
+  86          void LCD_Send4Bit(unsigned char Data){
+  87   1              LCD_D4=Data & 0x01;
+  88   1              LCD_D5=(Data>>1)&1;
+  89   1              LCD_D6=(Data>>2)&1;
+  90   1              LCD_D7=(Data>>3)&1;
+  91   1      }
+  92          // Ham Gui 1 Lenh Cho LCD
+  93          void LCD_SendCommand(unsigned char command){
+  94   1              LCD_Send4Bit(command >>4);/* Gui 4 bit cao */
+  95   1              LCD_Enable();
+  96   1              LCD_Send4Bit(command); /* Gui 4 bit thap*/
+  97   1              LCD_Enable();
+  98   1      }
+  99          void LCD_Clear(){// Ham Xoa Man Hinh LCD
+ 100   1              LCD_SendCommand(0x01); 
+ 101   1              delay_us(10);
+ 102   1      }
+ 103          // Ham Khoi Tao LCD
+ 104          void LCD_Init(){
+ 105   1              LCD_Send4Bit(0x00);
+ 106   1              delay_ms(20);
+ 107   1              LCD_RS=0;
+ 108   1              LCD_RW=0;
+ 109   1              LCD_Send4Bit(0x03);
+ 110   1              LCD_Enable();
+ 111   1              delay_ms(5);
+ 112   1              LCD_Enable();
+ 113   1              delay_us(100);
+ 114   1              LCD_Enable();
+ 115   1              LCD_Send4Bit(0x02);
+ 116   1              LCD_Enable();
+C51 COMPILER V9.59.0.0   CODE_DS18B20                                                      11/02/2018 15:16:09 PAGE 3   
+
+ 117   1              LCD_SendCommand( 0x28 );
+ 118   1              LCD_SendCommand( 0x0c); 
+ 119   1              LCD_SendCommand( 0x06 );
+ 120   1              LCD_SendCommand(0x01);
+ 121   1      }
+ 122          void LCD_Gotoxy(unsigned char x, unsigned char y){
+ 123   1              unsigned char address;
+ 124   1              if(!y)address=(0x80+x);
+ 125   1              else address=(0xc0+x);
+ 126   1              delay_us(1000);
+ 127   1              LCD_SendCommand(address);
+ 128   1              delay_us(50);
+ 129   1      }
+ 130          void LCD_PutChar(unsigned char Data){//Ham Gui 1 Ki Tu
+ 131   1              LCD_RS=1;
+ 132   1              LCD_SendCommand(Data);
+ 133   1              LCD_RS=0;
+ 134   1      }
+ 135          void LCD_Puts(char *s){//Ham gui 1 chuoi ky tu
+ 136   1              while (*s){
+ 137   2                      LCD_PutChar(*s);
+ 138   2                      s++;
+ 139   2              }
+ 140   1      }
+ 141          void TempShow(unsigned char z){ //Chuyen doi hien thi
+ 142   1           LCD_Puts("Nhiet do: ");
+ 143   1           LCD_PutChar((z/100)+48);//Tram
+ 144   1           LCD_PutChar((z%100/10)+48);//Chuc
+ 145   1           LCD_PutChar((z%10)+48);//Don vi 
+ 146   1           LCD_Puts("*C");
+ 147   1      }
+ 148          /******************Ctr chinh**************************/
+ 149          unsigned char temp;
+ 150          void main(){
+ 151   1        //init  
+ 152   1        LCD_Init();//Khoi tao LCD
+ 153   1          delay_ms(200);
+ 154   1        LCD_Puts("Do nhiet do...");//Gui chuoi len LCD
+ 155   1          delay_ms(500);
+ 156   1          LCD_Clear();//Xoa man hinh
+ 157   1        LCD_Gotoxy(0,1);
+ 158   1        LCD_Puts("Obit team");
+ 159   1        while(1){
+ 160   2            LCD_Gotoxy(0,0);
+ 161   2            ReadTemperature(); //Doc nhiet do luu vao bien temp
+ 162   2            TempShow(temp); //Hien thi nhiet do
+ 163   2            delay_ms(500);//0.5s doc mot lan
+ 164   2        }
+ 165   1      }//THE END
+ 166          
+ 167          
+ 168          
+ 169          
+ 170          
+ 171          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    580    ----
+   CONSTANT SIZE    =     39    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+C51 COMPILER V9.59.0.0   CODE_DS18B20                                                      11/02/2018 15:16:09 PAGE 4   
+
+   DATA SIZE        =      1       4
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
